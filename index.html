@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기성중학교 급식</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #ffffff; /* 노션 배경색에 맞게 조정 가능 (흰색) */
+            color: #37352f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #eb5757; /* 포인트 컬러 */
+        }
+        .date {
+            font-size: 0.9rem;
+            color: #787774;
+            margin-bottom: 15px;
+        }
+        .menu-list {
+            font-size: 1rem;
+            line-height: 1.6;
+            word-break: keep-all;
+            background: #f7f6f3; /* 노션 회색 배경 느낌 */
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .loading {
+            color: #999;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #191919; color: #d9d9d9; }
+            .menu-list { background: #2f2f2f; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🍱 기성중 오늘의 급식</h2>
+        <div class="date" id="date-display"></div>
+        <div class="menu-list" id="menu-display">
+            <span class="loading">메뉴를 불러오는 중...</span>
+        </div>
+    </div>
+
+    <script>
+        // 1. 날짜 구하기 (YYYYMMDD 형식)
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${year}${month}${day}`;
+        const dateDisplay = `${year}년 ${month}월 ${day}일`;
+
+        document.getElementById('date-display').innerText = dateDisplay;
+
+        // 2. API 호출 설정
+        const ATPT_OFCDC_SC_CODE = "G10"; // 대전교육청
+        const SD_SCHUL_CODE = "7430048"; // 기성중학교
+        const API_KEY = "Type=json&pIndex=1&pSize=100"; // 인증키 없이 호출 가능 (트래픽 제한 있음)
+        // 실제 서비스용이라면 NEIS 오픈 API 포털에서 키를 발급받아 &KEY=인증키 를 추가하세요.
+        
+        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?${API_KEY}&ATPT_OFCDC_SC_CODE=${ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${SD_SCHUL_CODE}&MLSV_YMD=${todayStr}`;
+
+        // 3. 데이터 가져오기
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const display = document.getElementById('menu-display');
+                
+                if (data.mealServiceDietInfo) {
+                    // 급식 정보가 있는 경우
+                    const menuData = data.mealServiceDietInfo[1].row[0].DDISH_NM;
+                    
+                    // 알레르기 번호(1.2.3...) 및 HTML 태그(<br/>) 제거 정제
+                    const cleanMenu = menuData
+                        .replace(/[0-9.]/g, "") // 숫자와 점 제거
+                        .replace(/\(\)/g, "")   // 빈 괄호 제거
+                        .replace(/<br\/>/g, "\n"); // 줄바꿈 태그를 개행문자로 변경
+
+                    display.innerText = cleanMenu;
+                } else {
+                    // 급식 정보가 없는 경우 (주말, 공휴일 등)
+                    display.innerText = "오늘은 급식 정보가 없습니다.";
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('menu-display').innerText = "정보를 불러오지 못했습니다.";
+            });
+    </script>
+</body>
+</html>
